@@ -1,5 +1,5 @@
 function _gh_install --on-event gh_install --on-event gh_update
-    set --query gh_package_content_type || set --local gh_package_content_type application/x-debian-package
+    set --query gh_package_content_type || set --local gh_package_content_type application/gzip
     set --query gh_package_name_contains || set --local gh_package_name_contains linux_amd64
     set --local current_version
 
@@ -37,16 +37,30 @@ function _gh_install --on-event gh_install --on-event gh_update
             set name "$name ($label)"
         end
 
-        curl -sLo "$file_path" "$download_url" >/dev/null
-        sudo dpkg -i "$file_path" >/dev/null
+        curl --progress-bar -Lo "$file_path" "$download_url"
+        set --query GH_INSTALL
+        or set --universal --export GH_INSTALL $HOME/.gh
+
+        rm -rf $GH_INSTALL
+        mkdir -p $GH_INSTALL
+        tar -C $GH_INSTALL --strip-components=1 -xzf "$file_path"
         rm -rf $tmp_dir
 
-        if not test "$current_version"
+        fish_add_path --prepend $GH_INSTALL/bin
+
+        if not gh auth status -t &| grep Token: >/dev/null
             command gh auth login
         end
     end
 end
 
 function _gh_uninstall --on-event gh_uninstall
-    sudo dpkg -r gh
+    if set --local index (contains --index $GH_INSTALL/bin $fish_user_paths)
+        set --universal --erase fish_user_paths[$index]
+    end
+
+    if set --query GH_INSTALL
+        rm -rf $GH_INSTALL
+        set -Ue GH_INSTALL
+    end
 end
