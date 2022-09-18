@@ -2,11 +2,9 @@ function _gh_install --on-event gh_install --on-event gh_update
     set --query gh_package_content_type || set --local gh_package_content_type application/x-debian-package
     set --query gh_package_name_contains || set --local gh_package_name_contains linux_amd64
     set --local current_version
-    set --local gh_path
 
-    if which gh >/dev/null
-        set gh_path (which gh)
-        set current_version ($gh_path version | head -n1 | awk '{print $3}')
+    if command --query gh
+        set current_version (command gh version | head -n1 | awk '{print $3}')
     end
 
     set --local latest_release_json (curl -fs https://api.github.com/repos/cli/cli/releases/latest)
